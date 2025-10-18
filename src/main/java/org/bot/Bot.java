@@ -1,5 +1,7 @@
 package org.bot;
 
+import org.bot.map.Translator;
+import org.bot.map.data.MessageData;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -13,13 +15,50 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import java.util.Date;
+import java.util.HashMap;
+
 public class Bot implements LongPollingSingleThreadUpdateConsumer {
     private final TelegramClient telegramClient;
+
+    //пока так
+    private HashMap<Long, MessageData> buffer;
+    private HashMap<Long, MessageData> server;
 
     public Bot(String token) {
         telegramClient = new OkHttpTelegramClient(token);
     }
 
+    @Override
+    public void consume(Update update) {
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            Long chatId = update.getMessage().getChatId();
+            String message = update.getMessage().getText();
+
+            Translator translator = new Translator(message);
+            MessageData messageData = translator.stringToObject();
+
+            if (messageData.hasCommand()) {
+                //TODO ответ на команду
+                switch (messageData.getCommand()) {
+                    case "/start" -> {
+                        break;
+                    } case "/help" -> {
+                        break;
+                    } case "/all" -> {
+                        break;
+                    }
+                }
+            } else if (messageData.hasTimeInterval()) {
+                // сохранение события
+            } else if (messageData.hasDate()) {
+                // сохранение мероприятия
+            } else {
+                // что-то
+            }
+        }
+    }
+/*
     @Override
     public void consume(Update update) {
 //        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
@@ -28,6 +67,10 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
         System.out.println(update);
 
         if (update.hasMessage() && update.getMessage().hasText()) {
+            System.out.println(update.getMessage().getDate());
+            Date date = new Date(((long)update.getMessage().getDate())*1000);
+            System.out.println(date);
+
             Long chatId = update.getMessage().getChatId();
             String message = update.getMessage().getText();
 
@@ -80,4 +123,5 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
             }
         }
     }
+ */
 }

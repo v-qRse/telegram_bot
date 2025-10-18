@@ -1,4 +1,4 @@
-package org.bot.map;
+package org.bot.map.scanner;
 
 public enum LexemeType {
     TIME,

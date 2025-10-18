@@ -1,75 +1,82 @@
 package org.bot.map;
 
+import org.bot.map.data.MessageData;
+import org.bot.map.scanner.Lexeme;
+import org.bot.map.scanner.LexemeType;
+import org.bot.map.scanner.Scanner;
+
+//TODO подумать над заменой throw new Error(string);
 public class Translator {
+    private final Scanner scanner;
+    private Lexeme lexeme;
 
-    public static Object stringToObject(String string) {
-        Scanner scanner = new Scanner(string);
-        Lexeme lexeme = scanner.nextLexeme();
+    public Translator(String string) {
+        scanner = new Scanner(string);
+        nextLexeme();
+    }
 
+    public MessageData stringToObject() {
+        MessageData messageData = new MessageData();
         switch (lexeme.getType()) {
-            case TIME -> {
-                lexeme = scanner.nextLexeme();
-
-                if (lexeme.getType() == LexemeType.COMMA) {
-                    lexeme = scanner.nextLexeme();
-
-                    if (lexeme.getType() == LexemeType.DATE) {
-                        //TODO запоминание дыты
-                        lexeme = scanner.nextLexeme();
-                    } else {
-                        throw new Error("invalid событие date");
-                    }
-
-                    if (lexeme.getType() == LexemeType.COMMA) {
-                        lexeme = scanner.nextLexeme();
-                        if (lexeme.getType() == LexemeType.STRING) {
-                            //TODO запоминание заголовка
-                            lexeme = scanner.nextLexeme();
-                        } else {
-                            throw new Error("invalid событие заголовок");
-                        }
-
-                        if (lexeme.getType() == LexemeType.COMMA) {
-                            lexeme = scanner.nextLexeme();
-                            if (lexeme.getType() == LexemeType.STRING) {
-                                //TODO запоминание описание
-                            } else {
-                                throw new Error("invalid событие описание");
-                            }
-                        }
-                    }
-                } else {
-                    throw new Error("invalid событие comma");
-                }
-            } case DATE -> {
-                lexeme = scanner.nextLexeme();
-
-                //TODO выделить в отдельный метод
-                if (lexeme.getType() == LexemeType.COMMA) {
-                    lexeme = scanner.nextLexeme();
-                    if (lexeme.getType() == LexemeType.STRING) {
-                        //TODO запоминание заголовка
-                        lexeme = scanner.nextLexeme();
-                    } else {
-                        throw new Error("invalid мероприятие заголовок");
-                    }
-
-                    if (lexeme.getType() == LexemeType.COMMA) {
-                        lexeme = scanner.nextLexeme();
-                        if (lexeme.getType() == LexemeType.STRING) {
-                            //TODO запоминание описание
-                        } else {
-                            throw new Error("invalid мероприятие описание");
-                        }
-                    }
-                }
-            } case COMMAND -> {
-                //switch по командам
-            } default -> {
-                throw new Error("invalid start lexeme");
-            }
+            case    TIME -> time(messageData);
+            case    DATE -> date(messageData);
+            case COMMAND -> command(messageData);
+            default -> throw new Error("invalid start lexeme");
         }
+        return messageData;
+    }
 
-        return null;
+    private void time(MessageData messageData) {
+        messageData.setTimeInterval(lexeme.getStringBuilder().toString());
+
+        nextLexeme();
+        if (lexeme.getType() == LexemeType.COMMA) {
+            nextLexeme();
+            if (lexeme.getType() == LexemeType.DATE) {
+                date(messageData);
+            } else {
+                throw new Error("invalid событие date");
+            }
+        } else {
+            throw new Error("invalid событие comma");
+        }
+    }
+
+    private void date(MessageData messageData) {
+        messageData.setDate(lexeme.getStringBuilder().toString());
+
+        nextLexeme();
+        if (lexeme.getType() == LexemeType.COMMA) {
+            nextLexeme();
+            titleAndDescription(messageData);
+        }
+    }
+
+    private void titleAndDescription(MessageData messageData) {
+        if (lexeme.getType() == LexemeType.STRING) {
+            messageData.setTitle(lexeme.getStringBuilder().toString());
+            nextLexeme();
+
+            if (lexeme.getType() == LexemeType.COMMA) {
+                nextLexeme();
+                if (lexeme.getType() == LexemeType.STRING) {
+                    messageData.setDescription(lexeme.getStringBuilder().toString());
+                    nextLexeme();
+                } else {
+                    throw new Error("invalid описание");
+                }
+            }
+        } else {
+            throw new Error("invalid заголовок");
+        }
+    }
+
+    private void command(MessageData messageData) {
+        messageData.setCommand(lexeme.getStringBuilder().toString());
+        nextLexeme();
+    }
+
+    private void nextLexeme() {
+        lexeme = scanner.nextLexeme();
     }
 }

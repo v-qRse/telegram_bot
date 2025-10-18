@@ -1,8 +1,7 @@
-package org.bot.map;
+package org.bot.map.scanner;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.Setter;
 
 @AllArgsConstructor
 @Getter

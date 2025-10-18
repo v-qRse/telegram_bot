@@ -1,5 +1,7 @@
-package org.bot.map;
+package org.bot.map.scanner;
 
+//TODO замена ch = nextChar(); на nextChar(); ?
+//TODO lexeme = function(lexeme); на function(lexeme); ?
 public class Scanner {
     private final Message message;
     private char ch;
@@ -30,6 +32,7 @@ public class Scanner {
         return message.nextChar();
     }
 
+    //TODO замена на void ?
     private StringBuilder skipScape() {
         StringBuilder space = new StringBuilder();
         while (isSpace()) {
@@ -43,7 +46,6 @@ public class Scanner {
         return ch == ' ' || ch == '\u2028' || ch == '\u2029' || ch == '\r' || ch == '\n';
     }
 
-    //TODO подумать над валидацией
     private Lexeme timeOrDateLexeme() {
         StringBuilder lexeme = new StringBuilder();
         int number = 0;
@@ -68,7 +70,7 @@ public class Scanner {
             if (!(number >= 1 && number <= 31)) {
                 throw new Error("invalid date day");
             }
-            lexeme = dateLexeme(lexeme, false);
+            lexeme = dateLexeme(lexeme);
             return new Lexeme(LexemeType.DATE, lexeme);
         }
 
@@ -141,29 +143,13 @@ public class Scanner {
         return lexeme;
     }
 
-    private StringBuilder dateLexeme(StringBuilder lexeme, boolean withStart) {
-        //TODO убрать if (withStart)
-        if (withStart) {
-            if (isNumber()) {
-                lexeme.append(ch);
-                ch = nextChar();
-            } else {
-                throw new Error("false date lexeme чч");
-            }
-
-            if (isNumber()) {
-                lexeme.append(ch);
-                ch = nextChar();
-            }
-        }
-
+    private StringBuilder dateLexeme(StringBuilder lexeme) {
         if (ch == '.') {
             lexeme.append(ch);
             ch = nextChar();
 
             int month = 0;
             for (int i = 0; i < 2; i++) {
-                //TODO вынести сравнение в отдельный метод
                 if (isNumber()) {
                     month = charToInt(month);
                     lexeme.append(ch);
@@ -185,7 +171,6 @@ public class Scanner {
                 for (int i = 0; i < 2; i++) {
                     if (isNumber()) {
                         year = charToInt(year);
-                        lexeme.append(ch);
                         ch = nextChar();
                     } else {
                         throw new Error("false date lexeme гг");
@@ -197,7 +182,6 @@ public class Scanner {
                     for (int i = 0; i < 2; i++) {
                         if (isNumber()) {
                             year = charToInt(year);
-                            lexeme.append(ch);
                             ch = nextChar();
                         } else {
                             throw new Error("false date lexeme гггг");
@@ -207,8 +191,10 @@ public class Scanner {
                     if (!(year >= 2000 && year <= 2100)) {
                         throw new Error("invalid date year");
                     }
+                } else {
+                    year += 2000;
                 }
-                //TODO подумать над валидацией гг
+                lexeme.append(year);
             }
         }
         return lexeme;
@@ -224,7 +210,6 @@ public class Scanner {
         command.append(ch);
         ch = nextChar();
 
-        //TODO узнать символы команды
         while (command.length() <= 32 && (ch >= 'a' && ch <= 'z' || ch >= 'A' && ch <= 'Z' || ch == '_' || isNumber())) {
             command.append(ch);
             ch = nextChar();

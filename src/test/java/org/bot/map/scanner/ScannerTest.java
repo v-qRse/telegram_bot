@@ -1,4 +1,4 @@
-package org.bot.map;
+package org.bot.map.scanner;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,26 +17,26 @@ public class ScannerTest  {
 
     @Test
     public void dayDateMessageTest() {
-        dateTest("1");
-        dateTest("31");
+        dateTest("1", "1");
+        dateTest("31", "31");
     }
 
     @Test
     public void monthDateMessageTest() {
-        dateTest("1.01");
-        dateTest("31.12");
+        dateTest("1.01", "1.01");
+        dateTest("31.12", "31.12");
     }
 
     @Test
     public void fullDateMessageTest() {
-        dateTest("1.01.2000");
-        dateTest("1.01.00");
-        dateTest("25.12.25");
-        dateTest("31.06.2025");
+        dateTest("1.01.2000", "1.01.2000");
+        dateTest("1.01.00", "1.01.2000");
+        dateTest("25.12.25", "25.12.2025");
+        dateTest("31.06.2025", "31.06.2025");
     }
 
-    private void dateTest(String string) {
-        test(string, string, LexemeType.DATE);
+    private void dateTest(String string, String answer) {
+        test(string, answer, LexemeType.DATE);
     }
 
     @Test

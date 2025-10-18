@@ -1,6 +1,6 @@
-package org.bot.map;
+package org.bot.map.scanner;
 
-public class Message {
+class Message {
     public static final char CH_EOT = '\u0000';
     private final char[] str;
     private int index = -1;
