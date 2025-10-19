@@ -47,18 +47,19 @@ public class Translator {
 
         nextLexeme();
         if (lexeme.getType() == LexemeType.COMMA) {
-            nextLexeme();
+            nextStringLexeme(false);
             titleAndDescription(messageData);
         }
     }
 
     private void titleAndDescription(MessageData messageData) {
+        //title - любая не пустая строка без запятой
         if (lexeme.getType() == LexemeType.STRING) {
             messageData.setTitle(lexeme.getStringBuilder().toString());
             nextLexeme();
 
             if (lexeme.getType() == LexemeType.COMMA) {
-                nextLexeme();
+                nextStringLexeme(true);
                 if (lexeme.getType() == LexemeType.STRING) {
                     messageData.setDescription(lexeme.getStringBuilder().toString());
                     nextLexeme();
@@ -78,5 +79,9 @@ public class Translator {
 
     private void nextLexeme() {
         lexeme = scanner.nextLexeme();
+    }
+
+    private void nextStringLexeme(boolean withComma) {
+        lexeme = scanner.nextStringLexeme(withComma);
     }
 }

@@ -19,11 +19,30 @@
         <resources>
             <resource>
                 <directory>src/main/resources</directory>
-                <includes>
-                    <include>config.yaml</include>
-                </includes>
             </resource>
         </resources>
+
+        <!-- TODO иcправить формирование jar файла
+            Error: Unable to initialize main class org.bot.Main
+            Caused by: java.lang.NoClassDefFoundError: org/telegram/telegrambots/longpolling/interfaces/LongPollingUpdateConsumer
+        !-->
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <!--<addClasspath>true</addClasspath> !-->
+                            <!--<classpathPrefix>libs/</classpathPrefix> !-->
+                            <mainClass>
+                                org.bot.Main
+                            </mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 
     <dependencies>
@@ -73,8 +92,6 @@
             <scope>test</scope>
         </dependency>
         <!-- Jupiter-tests -->
-
-
     </dependencies>
 
 </project>

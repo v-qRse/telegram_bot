@@ -6,6 +6,7 @@ import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 
 public class Main {
     public static void main(String[] args) {
+        System.out.println("Starting...");
         ConfigHandler configHandler = ConfigHandler.getInstance();
         Config config = configHandler.getConfig();
 

@@ -24,7 +24,7 @@ public class Scanner {
         } else if (ch == Message.CH_EOT) {
             return new Lexeme(LexemeType.NONE, null);
         } else {
-            return stringLexeme();
+            return stringLexeme(false);
         }
     }
 
@@ -32,7 +32,6 @@ public class Scanner {
         return message.nextChar();
     }
 
-    //TODO замена на void ?
     private StringBuilder skipScape() {
         StringBuilder space = new StringBuilder();
         while (isSpace()) {
@@ -222,10 +221,23 @@ public class Scanner {
         return ch >= '0' && ch <= '9';
     }
 
-    private Lexeme stringLexeme() {
-        StringBuilder lexeme = new StringBuilder();
+    public Lexeme nextStringLexeme(boolean withComma) {
+        skipScape();
+        return stringLexeme(withComma);
+    }
 
-        while (ch != Message.CH_EOT && ch != ',') {
+    private Lexeme stringLexeme(boolean withComma) {
+        StringBuilder lexeme = new StringBuilder();
+        StringBuilder space = new StringBuilder();
+
+        while (ch != Message.CH_EOT && (ch != ',' || withComma)) {
+            if (isSpace()) {
+                space = skipScape();
+            }
+            if (ch != Message.CH_EOT && (ch != ',' || withComma)) {
+                lexeme.append(space);
+                space = new StringBuilder();
+            }
             lexeme.append(ch);
             ch = nextChar();
         }

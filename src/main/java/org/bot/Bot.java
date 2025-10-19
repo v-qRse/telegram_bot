@@ -5,6 +5,7 @@ import org.bot.map.data.MessageData;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -15,47 +16,152 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.Keyboard
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.PriorityBlockingQueue;
 
 public class Bot implements LongPollingSingleThreadUpdateConsumer {
     private final TelegramClient telegramClient;
 
-    //пока так
-    private HashMap<Long, MessageData> buffer;
-    private HashMap<Long, MessageData> server;
+    //TODO пока так, в будующем мб заменить на какую-нибудь бд для сохранения запросов с основной бд
+    private final ConcurrentHashMap<Long, MessageData> buffer;
+    private final ConcurrentHashMap<Long, PriorityBlockingQueue<MessageData>> server;
 
     public Bot(String token) {
         telegramClient = new OkHttpTelegramClient(token);
+
+        buffer = new ConcurrentHashMap<>();
+        server = new ConcurrentHashMap<>();
     }
 
     @Override
     public void consume(Update update) {
+        System.out.println(update);
+
         if (update.hasMessage() && update.getMessage().hasText()) {
+            Long userId = update.getMessage().getFrom().getId();
             Long chatId = update.getMessage().getChatId();
             String message = update.getMessage().getText();
 
             Translator translator = new Translator(message);
             MessageData messageData = translator.stringToObject();
+            setDate(update.getMessage().getDate(), messageData);
+
+            SendMessage response = SendMessage
+                    .builder()
+                    .chatId(chatId)
+                    .text("")
+                    .build();
 
             if (messageData.hasCommand()) {
-                //TODO ответ на команду
+                //TODO ответ на команды
                 switch (messageData.getCommand()) {
                     case "/start" -> {
-                        break;
+                        response.setText("Здравствуйте!");
                     } case "/help" -> {
-                        break;
-                    } case "/all" -> {
-                        break;
+                        response.setText("Здесь должна быть полезная информация");
+                    } case "/alldata" -> {
+                        StringBuilder stringBuilder = new StringBuilder();
+                        if (server.containsKey(userId)) {
+                            for (MessageData data : server.get(userId)) {
+                                stringBuilder.append(data).append("\n");
+                            }
+                        } else {
+                            stringBuilder.append("Данных нет");
+                        }
+                        response.setText(stringBuilder.toString());
+                    } default -> {
+                        response.setText("Такой команды не существует");
                     }
                 }
-            } else if (messageData.hasTimeInterval()) {
-                // сохранение события
-            } else if (messageData.hasDate()) {
-                // сохранение мероприятия
+            } else if (messageData.hasTimeInterval() || messageData.hasDate()) {
+                buffer.put(userId, messageData);
+
+                //TODO вынести в константу и заменить на setText(CONST + message);
+                StringBuilder string = new StringBuilder("Выбирете действи, которое хотите сделать с введенныи ")
+                        .append(messageData.hasTimeInterval() ? "событием " : "мероприятием ")
+                        .append("\n ----- \n")
+                        .append(messageData);
+                response.setText(string.toString());
+
+                //TODO вынести кнопки
+                InlineKeyboardButton save = InlineKeyboardButton.builder()
+                        .text("Save").callbackData("save")
+                        .build();
+                InlineKeyboardButton delete = InlineKeyboardButton.builder()
+                        .text("Delete").callbackData("delete")
+                        .build();
+                response.setParseMode("HTML");
+                response.setReplyMarkup(InlineKeyboardMarkup.builder()
+                        .keyboardRow(new InlineKeyboardRow(save, delete))
+                        .build()
+                );
             } else {
-                // что-то
+                response.setText("Не удается распознать сообщение");
             }
+
+            try {
+                telegramClient.execute(response);
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+        } else if (update.hasCallbackQuery()) {
+            String data = update.getCallbackQuery().getData();
+            Long userId = update.getCallbackQuery().getFrom().getId();
+            Long chatId = update.getCallbackQuery().getMessage().getChatId();
+            long messageId = update.getCallbackQuery().getMessage().getMessageId();
+
+            EditMessageText newMessage = EditMessageText.builder()
+                    .chatId(chatId)
+                    .messageId(Math.toIntExact(messageId))
+                    .text("")
+                    .build();
+
+            switch (data) {
+                case "save" -> {
+                    MessageData messageData = buffer.remove(userId);
+                    if (!server.containsKey(userId)) {
+                        server.put(userId, new PriorityBlockingQueue<>());
+                    }
+                    server.get(userId).put(messageData);
+
+                    newMessage.setText("Сохранен");
+                } case "delete" -> {
+                    buffer.remove(userId);
+
+                    newMessage.setText("Удален");
+                } default -> {
+                    throw new Error("неверный callback запрос");
+                }
+            }
+
+            try {
+                telegramClient.execute(newMessage);
+            } catch (TelegramApiException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        System.out.println(buffer);
+        System.out.println(server);
+    }
+
+    private void setDate(long d, MessageData messageData) {
+        if (messageData.hasDate()) {
+            DateFormat dateFormat = new SimpleDateFormat("MM yyyy");
+            Date date = new Date(d * 1000);
+            String[] arr = dateFormat.format(date).split(" ");
+
+            String dateMessage = messageData.getDate();
+            if (dateMessage.length() < 3) {
+                dateMessage += "." + arr[0];
+            }
+            if (dateMessage.length() < 6) {
+                dateMessage += "." + arr[1];
+            }
+            messageData.setDate(dateMessage);
         }
     }
 /*
