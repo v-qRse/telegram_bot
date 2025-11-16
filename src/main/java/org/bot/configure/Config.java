@@ -8,5 +8,5 @@ import lombok.Setter;
 @Getter
 @Setter
 public class Config {
-    private String token;
+   private String token;
 }

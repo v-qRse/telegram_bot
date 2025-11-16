@@ -10,42 +10,42 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 public class ConfigHandler {
-    private static final File configFile;
+   private static final File configFile;
 
-    private static ConfigHandler configHandler;
-    private Config config;
+   private static ConfigHandler configHandler;
+   private Config config;
 
-    static {
-        try {
-            URI uri = ConfigHandler.class.getResource("/config.yaml").toURI();
-            configFile = new File(uri);
-        } catch (URISyntaxException e) {
-            throw new RuntimeException(e);
-        }
-    }
+   static {
+      try {
+         URI uri = ConfigHandler.class.getResource("/config.yaml").toURI();
+         configFile = new File(uri);
+      } catch (URISyntaxException e) {
+         throw new RuntimeException(e);
+      }
+   }
 
-    private ConfigHandler() {
-        config = loadConfig();
-    }
+   private ConfigHandler() {
+      config = loadConfig();
+   }
 
-    public static ConfigHandler getInstance() {
-        if (configHandler == null) {
-            configHandler = new ConfigHandler();
-        }
-        return configHandler;
-    }
+   public static ConfigHandler getInstance() {
+      if (configHandler == null) {
+         configHandler = new ConfigHandler();
+      }
+      return configHandler;
+   }
 
-    private Config loadConfig() {
-        try {
-            InputStream inputStream = new FileInputStream(configFile);
-            Yaml yaml = new Yaml();
-            return yaml.loadAs(inputStream, Config.class);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
+   private Config loadConfig() {
+      try {
+         InputStream inputStream = new FileInputStream(configFile);
+         Yaml yaml = new Yaml();
+         return yaml.loadAs(inputStream, Config.class);
+      } catch (FileNotFoundException e) {
+         throw new RuntimeException(e);
+      }
+   }
 
-    public Config getConfig() {
-        return config;
-    }
+   public Config getConfig() {
+      return config;
+   }
 }

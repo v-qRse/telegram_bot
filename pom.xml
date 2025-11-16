@@ -39,6 +39,9 @@
                                 org.bot.Main
                             </mainClass>
                         </manifest>
+                        <manifestEntries>
+                            <Class-Path>.</Class-Path>
+                        </manifestEntries>
                     </archive>
                 </configuration>
             </plugin>
