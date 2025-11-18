@@ -3,10 +3,33 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
+<!--    <parent>-->
+<!--        <groupId>org.springframework.boot</groupId>-->
+<!--        <artifactId>spring-boot-starter-parent</artifactId>-->
+<!--        <version>3.5.7</version>-->
+<!--        <relativePath/> &lt;!&ndash; lookup parent from repository &ndash;&gt;-->
+<!--    </parent>-->
     <groupId>org.bot</groupId>
     <artifactId>telegram_bot</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <name>telegram-bot</name>
+    <description>Client</description>
+    <url/>
+
+    <licenses>
+        <license/>
+    </licenses>
+
+    <developers>
+        <developer/>
+    </developers>
+
+    <scm>
+        <connection/>
+        <developerConnection/>
+        <tag/>
+        <url/>
+    </scm>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
@@ -15,58 +38,40 @@
         <junit-jupiter-version>5.13.4</junit-jupiter-version>
     </properties>
 
-    <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-            </resource>
-        </resources>
-
-        <!-- TODO иcправить формирование jar файла
-            Error: Unable to initialize main class org.bot.Main
-            Caused by: java.lang.NoClassDefFoundError: org/telegram/telegrambots/longpolling/interfaces/LongPollingUpdateConsumer
-        !-->
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-jar-plugin</artifactId>
-                <configuration>
-                    <archive>
-                        <manifest>
-                            <!--<addClasspath>true</addClasspath> !-->
-                            <!--<classpathPrefix>libs/</classpathPrefix> !-->
-                            <mainClass>
-                                org.bot.Main
-                            </mainClass>
-                        </manifest>
-                        <manifestEntries>
-                            <Class-Path>.</Class-Path>
-                        </manifestEntries>
-                    </archive>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-
     <dependencies>
+        <!-- Spring Web -->
         <dependency>
-            <groupId>org.telegram</groupId>
-            <artifactId>telegrambots-longpolling</artifactId>
-            <version>9.2.0</version>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <version>6.2.12</version>
         </dependency>
 
+        <!-- Telegram -->
+        <dependency>
+            <groupId>org.telegram</groupId>
+            <artifactId>telegrambots-springboot-longpolling-starter</artifactId>
+            <version>9.2.0</version>
+        </dependency>
         <dependency>
             <groupId>org.telegram</groupId>
             <artifactId>telegrambots-client</artifactId>
             <version>9.2.0</version>
         </dependency>
 
+<!--        <dependency>-->
+<!--            <groupId>org.telegram</groupId>-->
+<!--            <artifactId>telegrambots-client</artifactId>-->
+<!--            <version>9.2.0</version>-->
+<!--        </dependency>-->
+
+        <!-- Yaml -->
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
             <version>2.2</version>
         </dependency>
 
+        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -97,4 +102,41 @@
         <!-- Jupiter-tests -->
     </dependencies>
 
+    <build>
+<!--        <resources>-->
+<!--            <resource>-->
+<!--                <directory>src/main/resources</directory>-->
+<!--            </resource>-->
+<!--        </resources>-->
+
+        <!-- TODO иcправить формирование jar файла
+            Error: Unable to initialize main class org.bot.Main
+            Caused by: java.lang.NoClassDefFoundError: org/telegram/telegrambots/longpolling/interfaces/LongPollingUpdateConsumer
+        !-->
+        <plugins>
+<!--            <plugin>-->
+<!--                <groupId>org.apache.maven.plugins</groupId>-->
+<!--                <artifactId>maven-jar-plugin</artifactId>-->
+<!--                <configuration>-->
+<!--                    <archive>-->
+<!--                        <manifest>-->
+<!--                            &lt;!&ndash;<addClasspath>true</addClasspath> !&ndash;&gt;-->
+<!--                            &lt;!&ndash;<classpathPrefix>libs/</classpathPrefix> !&ndash;&gt;-->
+<!--                            <mainClass>-->
+<!--                                org.bot.Main-->
+<!--                            </mainClass>-->
+<!--                        </manifest>-->
+<!--                        <manifestEntries>-->
+<!--                            <Class-Path>.</Class-Path>-->
+<!--                        </manifestEntries>-->
+<!--                    </archive>-->
+<!--                </configuration>-->
+<!--            </plugin>-->
+
+<!--            <plugin>-->
+<!--                <groupId>org.springframework.boot</groupId>-->
+<!--                <artifactId>spring-boot-maven-plugin</artifactId>-->
+<!--            </plugin>-->
+        </plugins>
+    </build>
 </project>

@@ -1,8 +1,16 @@
 package org.bot;
 
+import org.bot.configure.Config;
+import org.bot.configure.ConfigHandler;
 import org.bot.map.Translator;
 import org.bot.map.data.MessageData;
+import org.bot.server.dto.UserDTO;
+import org.bot.server.services.UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.client.okhttp.OkHttpTelegramClient;
+import org.telegram.telegrambots.longpolling.interfaces.LongPollingUpdateConsumer;
+import org.telegram.telegrambots.longpolling.starter.SpringLongPollingBot;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
@@ -12,9 +20,6 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.PrintStream;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
@@ -24,20 +29,34 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.PriorityBlockingQueue;
 
-public class Bot implements LongPollingSingleThreadUpdateConsumer {
+@Component
+public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
    private final TelegramClient telegramClient;
+   private final Config config;
+
+   @Autowired
+   private UserService userService;
 
    //TODO пока так, в будующем мб заменить на какую-нибудь бд для сохранения запросов с основной бд
-   //TODO заменить userId на chatId
    private final ConcurrentHashMap<Long, MessageData> buffer;
    private final ConcurrentHashMap<Long, PriorityBlockingQueue<MessageData>> server;
 
-   public Bot(String token) throws FileNotFoundException {
-      telegramClient = new OkHttpTelegramClient(token);
+   public Bot() {
+      config = ConfigHandler.getInstance().getConfig();
+      telegramClient = new OkHttpTelegramClient(config.getToken());
 
       buffer = new ConcurrentHashMap<>();
       server = new ConcurrentHashMap<>();
-      System.setErr(new PrintStream(new File("log.txt")));
+   }
+
+   @Override
+   public String getBotToken() {
+      return config.getToken();
+   }
+
+   @Override
+   public LongPollingUpdateConsumer getUpdatesConsumer() {
+      return this;
    }
 
    @Override
@@ -47,8 +66,8 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
          Long chatId = update.getMessage().getChatId();
          String message = update.getMessage().getText();
 
-         if (buffer.containsKey(userId) && buffer.get(userId).getCommand().equals("/event")) {
-            patchEventMessage(userId, chatId, message);
+         if (buffer.containsKey(chatId) && buffer.get(chatId).getCommand().equals("/event")) {
+            patchEventMessage(chatId, message);
             return;
          }
          Translator translator = new Translator(message);
@@ -62,6 +81,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
          if (messageData.hasCommand()) {
             switch (messageData.getCommand()) {
                case "/start" -> {
+                  userService.save(new UserDTO(userId, chatId, "name", null));
                   responseText.append("Здравствуйте! \nВведите /help для полной информации");
                } case "/help" -> {
                   responseText.append(
@@ -83,11 +103,11 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
                               "* есть шанс, что бот упадет, простая проверка работоспособности - введение команд"
                   );
                } case "/today", "/tomorrow", "/alldata" -> {
-                  responseText.append(getStringData(messageData, userId));
+                  responseText.append(getStringData(messageData, chatId));
                } case "/event" -> {
                   messageData.setDate(null);
-                  messageData.setDescription("TimeInterval");
-                  buffer.put(userId, messageData);
+                  messageData.setPatchParameter("TimeInterval");
+                  buffer.put(chatId, messageData);
 
                   //TODO заменить на sendTimeIntervalRequest(Long chatId)
                   responseText.append("Введите временной промежуток. \n" +
@@ -105,7 +125,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
                }
             }
          } else if (messageData.hasDate()) {
-            buffer.put(userId, messageData);
+            buffer.put(chatId, messageData);
 
             //TODO заменить на sendSaveRequest(Long chatId, MessageData messageData)
             responseText.append("Выберите действие, которое хотите сделать с введенным событием")
@@ -126,7 +146,6 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
          execute(response);
       } else if (update.hasCallbackQuery()) {
          String data = update.getCallbackQuery().getData();
-         Long userId = update.getCallbackQuery().getFrom().getId();
          Long chatId = update.getCallbackQuery().getMessage().getChatId();
          long messageId = update.getCallbackQuery().getMessage().getMessageId();
 
@@ -136,52 +155,52 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
                .text("")
                .build();
 
-         //TODO сделать колбек для event
          switch (data) {
             case "save" -> {
-               MessageData messageData = buffer.remove(userId);
-               if (!server.containsKey(userId)) {
-                  server.put(userId, new PriorityBlockingQueue<>());
+               MessageData messageData = buffer.remove(chatId);
+               if (!server.containsKey(chatId)) {
+                  server.put(chatId, new PriorityBlockingQueue<>());
                }
-               server.get(userId).put(messageData);
+               server.get(chatId).put(messageData);
                newMessage.setText("Сохранен");
             } case "delete" -> {
-               buffer.remove(userId);
+               buffer.remove(chatId);
                newMessage.setText("Удален");
             } case "allday" -> {
-               MessageData messageData = buffer.get(userId);
-               messageData.setDescription("Date");
+               MessageData messageData = buffer.get(chatId);
+               messageData.setPatchParameter("Date");
                sendDateRequest(chatId);
                newMessage.setText("Событие весь день");
             } case "today" -> {
                MessageData dateMessageData = new MessageData();
                setDate(update.getCallbackQuery().getMessage().getDate(), dateMessageData);
-               MessageData messageData = buffer.get(userId);
-               messageData.setDescription("Title");
+               MessageData messageData = buffer.get(chatId);
+               messageData.setPatchParameter("Title");
                messageData.setDate(dateMessageData.getDate());
                sendTitleRequest(chatId);
                newMessage.setText("Установлена дата " + messageData.getDate());
             } case "tomorrow" -> {
                MessageData dateMessageData = new MessageData();
                setDate(update.getCallbackQuery().getMessage().getDate(), dateMessageData);
-               MessageData messageData = buffer.get(userId);
-               messageData.setDescription("Title");
+               MessageData messageData = buffer.get(chatId);
+               messageData.setPatchParameter("Title");
                messageData.setDate(nextDay(dateMessageData.getDate()));
                sendTitleRequest(chatId);
                newMessage.setText("Установлена дата " + messageData.getDate());
             } case "notitle" -> {
-               MessageData messageData = buffer.get(userId);
-               messageData.setDescription("Description");
+               MessageData messageData = buffer.get(chatId);
+               messageData.setPatchParameter("Description");
                sendDescriptionRequest(chatId);
                newMessage.setText("Для заголовка установлено значение по умолчанию");
             } case "nodescription" -> {
-               MessageData messageData = buffer.get(userId);
+               MessageData messageData = buffer.get(chatId);
                messageData.setCommand(null);
                messageData.setDescription(null);
+               messageData.setPatchParameter(null);
                sendSaveRequest(chatId, messageData);
                newMessage.setText("Для описания значение не установлено");
             } case "cansel" -> {
-               buffer.remove(userId);
+               buffer.remove(chatId);
                newMessage.setText("Создание отменено");
             } default -> {
                throw new Error("неверный callback запрос");
@@ -195,14 +214,14 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
    }
 
    //TODO rename
-   private void patchEventMessage(Long userId, Long chatId, String message) {
+   private void patchEventMessage(Long chatId, String message) {
       Translator translator = new Translator(message);
-      MessageData messageData = buffer.get(userId);
+      MessageData messageData = buffer.get(chatId);
       patchFromTranslatorAndSendNextRequest(messageData, translator, chatId);
    }
 
    private void patchFromTranslatorAndSendNextRequest(MessageData messageData, Translator translator, Long chatId) {
-      switch (messageData.getDescription()) {
+      switch (messageData.getPatchParameter()) {
          case "TimeInterval" -> {
             patchTimeIntervalAndSendDateRequest(messageData, translator, chatId);
          } case "Date" -> {
@@ -219,7 +238,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
       MessageData pathData = translator.stringToPatchObject(false);
       if (oneDataInMessageData(pathData) && pathData.hasTimeInterval()) {
          messageData.setTimeInterval(pathData.getTimeInterval());
-         messageData.setDescription("Date");
+         messageData.setPatchParameter("Date");
          sendDateRequest(chatId);
       } else {
          sendTimeIntervalRequest(chatId);
@@ -230,7 +249,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
       MessageData pathData = translator.stringToPatchObject(false);
       if (oneDataInMessageData(pathData) && pathData.hasDate()) {
          messageData.setDate(pathData.getDate());
-         messageData.setDescription("Title");
+         messageData.setPatchParameter("Title");
          sendTitleRequest(chatId);
       } else {
          sendDateRequest(chatId);
@@ -241,7 +260,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
       MessageData pathData = translator.stringToPatchObject(false);
       if (oneDataInMessageData(pathData) && !pathData.hasDefaultTitle()) {
          messageData.setTitle(pathData.getTitle());
-         messageData.setDescription("Description");
+         messageData.setPatchParameter("Description");
          sendDescriptionRequest(chatId);
       } else {
          sendTitleRequest(chatId);
@@ -253,6 +272,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
       if (oneDataInMessageData(pathData) && pathData.hasDescription()) {
          messageData.setDescription(pathData.getDescription());
          messageData.setCommand(null);
+         messageData.setPatchParameter(null);
          sendSaveRequest(chatId, messageData);
       } else {
          sendDescriptionRequest(chatId);
@@ -341,7 +361,6 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
       return messageData.countNotDefault() == 1;
    }
 
-   //TODO перенести в Translator
    private void setDate(long d, MessageData messageData) {
       DateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
       Date date = new Date(d * 1000);
@@ -361,8 +380,8 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
       messageData.setDate(dateMessage);
    }
 
-   private StringBuilder getStringData(MessageData messageData, Long userId) {
-      if (!server.containsKey(userId)) {
+   private StringBuilder getStringData(MessageData messageData, Long chatId) {
+      if (!server.containsKey(chatId)) {
          return new StringBuilder();
       }
 
@@ -370,7 +389,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
       switch (messageData.getCommand()) {
          case "/today" -> {
             String date = messageData.getDate();
-            List<String> buf = server.get(userId)
+            List<String> buf = server.get(chatId)
                   .stream()
                   .filter(msgData -> Objects.equals(date, msgData.getDate()))
                   .map(msgDate -> msgDate.toString() + "\n")
@@ -383,7 +402,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
             }
          } case "/tomorrow" -> {
             String date = nextDay(messageData.getDate());
-            List<String> buf = server.get(userId)
+            List<String> buf = server.get(chatId)
                   .stream()
                   .filter(msgData -> Objects.equals(date, msgData.getDate()))
                   .map(msgDate -> msgDate.toString() + "\n")
@@ -395,7 +414,7 @@ public class Bot implements LongPollingSingleThreadUpdateConsumer {
                out.append("На завтра ничего не запланировано");
             }
          } case "/alldata" -> {
-            List<String> buf = server.get(userId)
+            List<String> buf = server.get(chatId)
                   .stream()
                   .map(msgDate -> msgDate.toString() + "\n")
                   .toList();

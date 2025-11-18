@@ -1,5 +1,6 @@
 package org.bot.configure;
 
+import org.springframework.stereotype.Component;
 import org.yaml.snakeyaml.Yaml;
 
 import java.io.File;
@@ -9,6 +10,7 @@ import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 
+@Component
 public class ConfigHandler {
    private static final File configFile;
 

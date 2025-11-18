@@ -37,13 +37,29 @@ public class Translator {
          case COMMA -> {
             nextLexeme();
          } case COMMAND -> {
-            messageData.setCommand(lexemeData);
+            if (messageData.hasCommand()) {
+               messageData.setDescription(lexemeData);
+            } else {
+               messageData.setCommand(lexemeData);
+            }
          } case TIME -> {
-            messageData.setTimeInterval(lexemeData);
+            if (messageData.hasTimeInterval()) {
+               messageData.setDescription(lexemeData);
+            } else {
+               messageData.setTimeInterval(lexemeData);
+            }
          } case DATE -> {
-            messageData.setDate(lexemeData);
+            if (messageData.hasDate()) {
+               messageData.setDescription(lexemeData);
+            } else {
+               messageData.setDate(lexemeData);
+            }
          } case STRING -> {
-            messageData.setTitle(lexemeData);
+            if (messageData.hasDate()) {
+               messageData.setDescription(lexemeData);
+            } else {
+               messageData.setTitle(lexemeData + " ");
+            }
          }
       }
    }
@@ -88,7 +104,7 @@ public class Translator {
    private void titleAndDescription(MessageData messageData) {
       //title - любая не пустая строка без запятой
       if (lexeme.getType() == LexemeType.STRING) {
-         messageData.setTitle(lexeme.getStringBuilder().toString());
+         messageData.setTitle(lexeme.getStringBuilder().toString() + " ");
          nextLexeme();
 
          if (lexeme.getType() == LexemeType.COMMA) {

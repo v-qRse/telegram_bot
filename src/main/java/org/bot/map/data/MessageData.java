@@ -11,12 +11,16 @@ import org.jetbrains.annotations.NotNull;
 public class MessageData implements Comparable<MessageData> {
    public static final String DEFAULT_TITLE = "Default title";
 
+   private Long id;
+   private Long number;
+
    private String command;
    private String timeInterval;
    private String date;
-   @NotNull
    private String title = DEFAULT_TITLE;
    private String description;
+
+   private String patchParameter;
 
    public boolean hasCommand() {
       return command != null;
@@ -114,6 +118,7 @@ public class MessageData implements Comparable<MessageData> {
          return command;
       }
       StringBuilder stringBuilder = new StringBuilder();
+      stringBuilder.append(number).append(") ");
       if (hasDate()) {
          stringBuilder.append(date).append("\n");
       }

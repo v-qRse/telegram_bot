@@ -4,18 +4,12 @@ import org.bot.configure.Config;
 import org.bot.configure.ConfigHandler;
 import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
 public class Main {
    public static void main(String[] args) {
-      System.out.println("Starting...");
-      ConfigHandler configHandler = ConfigHandler.getInstance();
-      Config config = configHandler.getConfig();
-
-      try (TelegramBotsLongPollingApplication botsApplication = new TelegramBotsLongPollingApplication()) {
-         botsApplication.registerBot(config.getToken(), new Bot(config.getToken()));
-         System.out.println("Start");
-         Thread.currentThread().join();
-      } catch (Exception e) {
-         throw new RuntimeException(e);
-      }
+      SpringApplication.run(Main.class, args);
    }
 }
