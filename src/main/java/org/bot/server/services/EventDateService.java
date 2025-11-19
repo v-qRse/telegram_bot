@@ -1,6 +1,7 @@
 package org.bot.server.services;
 
 import org.bot.map.data.MessageData;
+import org.bot.map.data.StringDate;
 import org.bot.server.EventMapper;
 import org.bot.server.dto.EventDateDTO;
 import org.bot.server.repositories.EventDateRepository;
@@ -22,23 +23,23 @@ public class EventDateService {
       return eventMapper.mapFirstFrom(dateDTO);
    }
 
-   public List<MessageData> findByDate(Long chatId, String date) {
-      EventDateDTO dateDTO = eventDateRepository.findByDate(chatId, date);
+   public List<MessageData> findByDate(Long chatId, StringDate date) {
+      EventDateDTO dateDTO = eventDateRepository.findByDate(chatId, date.mapped());
       return eventMapper.mapAllFrom(dateDTO);
    }
 
-   public List<MessageData> findAllByDates(Long chatId, String from, String to) {
-      List<EventDateDTO> dateDTOS = eventDateRepository.findAllByDates(chatId, from, to);
+   public List<MessageData> findAllByDates(Long chatId, StringDate from, StringDate to) {
+      List<EventDateDTO> dateDTOS = eventDateRepository.findAllByDates(chatId, from.mapped(), to.mapped());
       return eventMapper.mapAllFrom(dateDTOS);
    }
 
-   public MessageData pathByDate(Long chatId, String date, MessageData messageData) {
+   public MessageData pathByDate(Long chatId, StringDate date, MessageData messageData) {
       EventDateDTO eventDateDTO = eventMapper.mapFrom(messageData);
-      EventDateDTO dateDTO = eventDateRepository.pathByDate(chatId, date, eventDateDTO);
+      EventDateDTO dateDTO = eventDateRepository.pathByDate(chatId, date.mapped(), eventDateDTO);
       return eventMapper.mapFirstFrom(dateDTO);
    }
 
-   public void deleteByDate(Long chatId, String date) {
-      eventDateRepository.deleteByDate(chatId, date);
+   public void deleteByDate(Long chatId, StringDate date) {
+      eventDateRepository.deleteByDate(chatId, date.mapped());
    }
 }

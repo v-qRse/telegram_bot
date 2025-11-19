@@ -1,6 +1,7 @@
 package org.bot.server;
 
 import org.bot.map.data.MessageData;
+import org.bot.map.data.StringDate;
 import org.bot.server.dto.EventDTO;
 import org.bot.server.dto.EventDateDTO;
 import org.springframework.stereotype.Component;
@@ -11,7 +12,7 @@ import java.util.List;
 @Component
 public class EventMapper {
    public MessageData mapFirstFrom(EventDateDTO eventDateDTO) {
-      return eventDateDTO == null
+      return eventDateDTO == null || eventDateDTO.getDate() == null
             ? new MessageData()
             : setMessageData(
                   eventDateDTO.getDate(),
@@ -21,8 +22,8 @@ public class EventMapper {
    }
 
    public List<MessageData> mapAllFrom(EventDateDTO eventDateDTO) {
-      if (eventDateDTO == null) {
-         return new ArrayList<>();
+      if (eventDateDTO == null || eventDateDTO.getDate() == null) {
+         return List.of();
       }
       ArrayList<MessageData> out = new ArrayList<>();
       Long counter = 1L;
@@ -35,11 +36,14 @@ public class EventMapper {
 
    public List<MessageData> mapAllFrom(List<EventDateDTO> eventDateDTOs) {
       if (eventDateDTOs == null) {
-         return new ArrayList<>();
+         return List.of();
       }
       ArrayList<MessageData> out = new ArrayList<>();
       Long counter = 1L;
       for (EventDateDTO eventDateDTO: eventDateDTOs) {
+         if (eventDateDTO.getDate() == null) {
+            continue;
+         }
          for (EventDTO eventDTO : eventDateDTO.getEvents()) {
             out.add(setMessageData(eventDateDTO.getDate(), counter, eventDTO));
             counter++;
@@ -65,7 +69,7 @@ public class EventMapper {
       return messageData == null
             ? new EventDateDTO()
             : new EventDateDTO(
-                  messageData.getDate(),
+                  messageData.getDate().mapped(),
                   List.of(eventDTOFrom(messageData))
             );
    }
@@ -76,9 +80,9 @@ public class EventMapper {
          return out;
       }
       MessageData currentMessageData = messageDataList.get(0);
-      String currentDate = currentMessageData.getDate();
+      StringDate currentDate = currentMessageData.getDate();
       EventDateDTO eventDateDTO = new EventDateDTO(
-            currentDate,
+            currentDate.mapped(),
             List.of(eventDTOFrom(currentMessageData))
       );
       out.add(eventDateDTO);
@@ -88,7 +92,7 @@ public class EventMapper {
             eventDateDTO.getEvents().add(eventDTOFrom(currentMessageData));
          } else {
             eventDateDTO = new EventDateDTO(
-                  currentDate,
+                  currentDate.mapped(),
                   List.of(eventDTOFrom(currentMessageData))
             );
             out.add(eventDateDTO);

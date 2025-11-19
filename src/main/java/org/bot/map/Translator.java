@@ -1,6 +1,7 @@
 package org.bot.map;
 
 import org.bot.map.data.MessageData;
+import org.bot.map.data.StringDate;
 import org.bot.map.scanner.Lexeme;
 import org.bot.map.scanner.LexemeType;
 import org.bot.map.scanner.Scanner;
@@ -13,6 +14,24 @@ public class Translator {
    public Translator(String string) {
       scanner = new Scanner(string);
       nextLexeme();
+   }
+
+   public StringDate[] stringToDates() {
+      if (lexeme.getType() == LexemeType.DATE) {
+         StringDate[] dates = new StringDate[2];
+         dates[0] = new StringDate(lexeme.getStringBuilder().toString());
+         nextLexeme();
+         if (lexeme.getType() == LexemeType.COMMA) {
+            nextLexeme();
+            if (lexeme.getType() == LexemeType.DATE) {
+               dates[1] = new StringDate(lexeme.getStringBuilder().toString());
+            } else {
+               throw new Error("invalid событие dates");
+            }
+         }
+         return dates;
+      }
+      throw new Error("invalid событие dates");
    }
 
    public MessageData stringToPatchObject(boolean isDescription) {

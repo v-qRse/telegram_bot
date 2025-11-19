@@ -18,7 +18,8 @@ public class MessageDataService {
       if (containsKey(key)) {
          delete(key);
       }
-      return server.put(key, value);
+      server.put(key, value);
+      return value;
    }
 
    public List<MessageData> findAll(Long key) {

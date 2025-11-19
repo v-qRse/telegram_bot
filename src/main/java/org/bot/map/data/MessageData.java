@@ -16,7 +16,7 @@ public class MessageData implements Comparable<MessageData> {
 
    private String command;
    private String timeInterval;
-   private String date;
+   private StringDate date = new StringDate();
    private String title = DEFAULT_TITLE;
    private String description;
 
@@ -31,7 +31,7 @@ public class MessageData implements Comparable<MessageData> {
    }
 
    public boolean hasDate() {
-      return date != null;
+      return date.getDate() != null;
    }
 
    public boolean hasDefaultTitle() {
@@ -43,12 +43,20 @@ public class MessageData implements Comparable<MessageData> {
    }
 
    public void setTimeInterval(String timeInterval) {
+      if (timeInterval == null || timeInterval.isEmpty()) {
+         this.timeInterval = null;
+         return;
+      }
       String[] times = timeInterval.split("-");
       if (times[0].compareTo(times[1]) <= 0) {
          this.timeInterval = timeInterval;
       } else {
          throw new Error("invalid time interval");
       }
+   }
+
+   public void setDate(String date) {
+      this.date = new StringDate(date);
    }
 
    public int countNotDefault() {
