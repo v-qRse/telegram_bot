@@ -5,9 +5,11 @@ import org.bot.server.EventMapper;
 import org.bot.server.dto.EventDateDTO;
 import org.bot.server.repositories.EventDateRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+@Service
 public class EventDateService {
    @Autowired
    private EventDateRepository eventDateRepository;

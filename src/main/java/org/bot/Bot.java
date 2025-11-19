@@ -2,9 +2,12 @@ package org.bot;
 
 import org.bot.configure.Config;
 import org.bot.configure.ConfigHandler;
+import org.bot.db.services.MessageDataService;
 import org.bot.map.Translator;
 import org.bot.map.data.MessageData;
 import org.bot.server.dto.UserDTO;
+import org.bot.server.services.EventDateService;
+import org.bot.server.services.EventService;
 import org.bot.server.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -27,7 +30,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.PriorityBlockingQueue;
 
 @Component
 public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
@@ -36,17 +38,21 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
 
    @Autowired
    private UserService userService;
+   @Autowired
+   private EventDateService eventDateService;
+   @Autowired
+   private EventService eventService;
 
    //TODO пока так, в будующем мб заменить на какую-нибудь бд для сохранения запросов с основной бд
    private final ConcurrentHashMap<Long, MessageData> buffer;
-   private final ConcurrentHashMap<Long, PriorityBlockingQueue<MessageData>> server;
+   @Autowired
+   private MessageDataService messageDataService;
 
    public Bot() {
       config = ConfigHandler.getInstance().getConfig();
       telegramClient = new OkHttpTelegramClient(config.getToken());
 
       buffer = new ConcurrentHashMap<>();
-      server = new ConcurrentHashMap<>();
    }
 
    @Override
@@ -158,10 +164,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
          switch (data) {
             case "save" -> {
                MessageData messageData = buffer.remove(chatId);
-               if (!server.containsKey(chatId)) {
-                  server.put(chatId, new PriorityBlockingQueue<>());
-               }
-               server.get(chatId).put(messageData);
+               messageDataService.saveAllWithChange(chatId, List.of(messageData));
                newMessage.setText("Сохранен");
             } case "delete" -> {
                buffer.remove(chatId);
@@ -210,7 +213,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
          editExecute(newMessage);
       }
 
-      System.err.println(update + "\n" + buffer.toString() + "\n" + server.toString());
+      System.err.println(update + "\n" + buffer.toString());
    }
 
    //TODO rename
@@ -380,20 +383,22 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
       messageData.setDate(dateMessage);
    }
 
+   //TODO rename
    private StringBuilder getStringData(MessageData messageData, Long chatId) {
-      if (!server.containsKey(chatId)) {
-         return new StringBuilder();
+      if (!messageDataService.containsKey(chatId)) {
+         return new StringBuilder("Данных нет");
       }
 
       StringBuilder out = new StringBuilder();
       switch (messageData.getCommand()) {
          case "/today" -> {
             String date = messageData.getDate();
-            List<String> buf = server.get(chatId)
+            List<String> buf = messageDataService.findAll(chatId)
                   .stream()
                   .filter(msgData -> Objects.equals(date, msgData.getDate()))
                   .map(msgDate -> msgDate.toString() + "\n")
                   .toList();
+
             for (String string: buf) {
                out.append(string);
             }
@@ -402,11 +407,12 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
             }
          } case "/tomorrow" -> {
             String date = nextDay(messageData.getDate());
-            List<String> buf = server.get(chatId)
+            List<String> buf = messageDataService.findAll(chatId)
                   .stream()
                   .filter(msgData -> Objects.equals(date, msgData.getDate()))
                   .map(msgDate -> msgDate.toString() + "\n")
                   .toList();
+
             for (String string: buf) {
                out.append(string);
             }
@@ -414,10 +420,11 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                out.append("На завтра ничего не запланировано");
             }
          } case "/alldata" -> {
-            List<String> buf = server.get(chatId)
+            List<String> buf = messageDataService.findAll(chatId)
                   .stream()
                   .map(msgDate -> msgDate.toString() + "\n")
                   .toList();
+
             for (String string: buf) {
                out.append(string);
             }
