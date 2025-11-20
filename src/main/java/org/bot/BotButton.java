@@ -27,6 +27,28 @@ public class BotButton {
    public final static InlineKeyboardButton WITHOUT_DESCRIPTION = InlineKeyboardButton.builder()
          .text("No description").callbackData("nodescription")
          .build();
+
+   // PATH
+   public final static InlineKeyboardButton PATCH_TIME = InlineKeyboardButton.builder()
+         .text("Time").callbackData("patchTime")
+         .build();
+   public final static InlineKeyboardButton PATCH_TITLE = InlineKeyboardButton.builder()
+         .text("Title").callbackData("patchTitle")
+         .build();
+   public final static InlineKeyboardButton PATCH_DESCRIPTION = InlineKeyboardButton.builder()
+         .text("Description").callbackData("patchDescription")
+         .build();
+
+   public final static InlineKeyboardButton PATCH_SAVE = InlineKeyboardButton.builder()
+         .text("Save").callbackData("savePatch")
+         .build();
+   public final static InlineKeyboardButton PATCH = InlineKeyboardButton.builder()
+         .text("Repatch").callbackData("patch")
+         .build();
+   public final static InlineKeyboardButton PATCH_DELETE = InlineKeyboardButton.builder()
+         .text("Delete").callbackData("patchDelete")
+         .build();
+
    public final static InlineKeyboardButton CANSEL = InlineKeyboardButton.builder()
          .text("Cansel").callbackData("cansel")
          .build();

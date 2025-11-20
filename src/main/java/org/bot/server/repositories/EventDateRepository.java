@@ -38,6 +38,7 @@ public class EventDateRepository {
    }
 
    public void deleteByDate(Long chatId, String date) {
-      restClient.delete().uri("/{chatId}/{date}", chatId, date);
+      restClient.delete().uri("/{chatId}/{date}", chatId, date)
+            .retrieve().body(String.class);;
    }
 }

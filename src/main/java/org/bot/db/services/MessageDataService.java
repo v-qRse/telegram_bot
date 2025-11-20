@@ -28,6 +28,17 @@ public class MessageDataService {
             : List.of();
    }
 
+   public MessageData findByIndex(Long key, long index) {
+      if (!containsKey(key)) {
+         return null;
+      }
+      return server.get(key)
+            .stream()
+            .filter(messageData -> messageData.getNumber() == index)
+            .toList()
+            .get(0);
+   }
+
    public  void delete(Long key) {
       server.remove(key);
    }

@@ -19,6 +19,7 @@ public class EventRepository {
    }
 
    public void delete(Long id) {
-      restClient.delete().uri("/{id}", id);
+      restClient.delete().uri("/{id}", id)
+            .retrieve().body(String.class);
    }
 }

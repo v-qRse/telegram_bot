@@ -105,6 +105,7 @@ public class EventMapper {
       MessageData out = new MessageData();
       if (eventDTO != null) {
          out.setId(eventDTO.getId());
+         out.setNumber(1L);
          out.setTimeInterval(eventDTO.getTimeInterval());
          out.setTitle(eventDTO.getTitle());
          out.setDescription(eventDTO.getDescription());

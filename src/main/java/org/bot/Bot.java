@@ -24,12 +24,8 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKe
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.time.LocalDate;
-import java.util.Date;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -79,8 +75,10 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                case "/event" -> {
                   fillEventMessage(chatId, message, update.getMessage().getDate());
                } case "/date" -> {
-                  //TODO доделать
                   request(chatId, message, update.getMessage().getDate());
+               } case "/patch" -> {
+                  //TODO сделать
+                  patch(chatId, message, update.getMessage().getDate());
                }
             }
             return;
@@ -119,8 +117,27 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                   );
                } case "/today", "/tomorrow", "/alldata" -> {
                   responseText.append(getStringData(messageData, chatId));
+               } case "/event" -> {
+                  messageData.setDate(null);
+                  messageData.setPatchParameter("TimeInterval");
+                  buffer.put(chatId, messageData);
+
+                  //TODO заменить на sendTimeIntervalRequest(Long chatId)
+                  responseText.append(
+                        "Введите временной промежуток. \n" +
+                              "Формат: hh:mm - hh:mm"
+                  );
+
+                  response.setParseMode("HTML");
+                  response.setReplyMarkup(
+                        InlineKeyboardMarkup
+                              .builder()
+                              .keyboardRow(new InlineKeyboardRow(BotButton.ALL_DAY, BotButton.CANSEL))
+                              .build()
+                  );
                } case "/date" -> {
                   messageData.setDate(null);
+                  messageData.setPatchParameter("Index");
                   buffer.put(chatId, messageData);
                   responseText.append(
                         "Введите требуемую дату в формате \n" +
@@ -135,22 +152,18 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                               .keyboardRow(new InlineKeyboardRow(BotButton.CANSEL))
                               .build()
                   );
-               } case "/event" -> {
+               } case "/patch" -> {
                   messageData.setDate(null);
-                  messageData.setPatchParameter("TimeInterval");
+                  messageData.setPatchParameter("Index");
                   buffer.put(chatId, messageData);
-
-                  //TODO заменить на sendTimeIntervalRequest(Long chatId)
                   responseText.append(
-                        "Введите временной промежуток. \n" +
-                        "Формат: hh:mm - hh:mm"
+                        "Введите номер события, которое хотите изменить"
                   );
-
                   response.setParseMode("HTML");
                   response.setReplyMarkup(
                         InlineKeyboardMarkup
                               .builder()
-                              .keyboardRow(new InlineKeyboardRow(BotButton.ALL_DAY, BotButton.CANSEL))
+                              .keyboardRow(new InlineKeyboardRow(BotButton.CANSEL))
                               .build()
                   );
                } default -> {
@@ -233,6 +246,85 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                messageData.setPatchParameter(null);
                sendSaveOrDeleteRequest(chatId, messageData);
                newMessage.setText("Для описания значение не установлено");
+            //TODO упростить, заменить на соответствующие методы
+            } case "patch" -> {
+               MessageData messageData = buffer.get(chatId);
+               messageData.setPatchParameter("Parameter");
+               newMessage.setText(
+                     "Выберите параметр, который хотите изменить \n" +
+                     "* в текущей версии дату изменить нельзя"
+               );
+               newMessage.setParseMode("HTML");
+               newMessage.setReplyMarkup(
+                     InlineKeyboardMarkup
+                           .builder()
+                           .keyboardRow(
+                                 new InlineKeyboardRow(
+                                       BotButton.PATCH_TIME,
+                                       BotButton.PATCH_TITLE,
+                                       BotButton.PATCH_DESCRIPTION
+                                 )
+                           ).keyboardRow(
+                                 new InlineKeyboardRow(
+                                       BotButton.PATCH_DELETE,
+                                       BotButton.CANSEL
+                                 )
+                           ).build()
+               );
+            } case "patchTime" -> {
+               MessageData messageData = buffer.get(chatId);
+               messageData.setPatchParameter("Time");
+               newMessage.setText(
+                     "Введите значение, на которое нужно заменить время \n" +
+                     "Формат: hh:mm-hh:mm"
+               );
+               newMessage.setParseMode("HTML");
+               newMessage.setReplyMarkup(
+                     InlineKeyboardMarkup
+                           .builder()
+                           .keyboardRow(new InlineKeyboardRow(BotButton.CANSEL))
+                           .build()
+               );
+            } case "patchTitle" -> {
+               MessageData messageData = buffer.get(chatId);
+               messageData.setPatchParameter("Title");
+               newMessage.setText(
+                     "Введите значение, на которое нужно заменить заголовок \n" +
+                     "Формат: строка без запятых"
+               );
+               newMessage.setParseMode("HTML");
+               newMessage.setReplyMarkup(
+                     InlineKeyboardMarkup
+                           .builder()
+                           .keyboardRow(new InlineKeyboardRow(BotButton.CANSEL))
+                           .build()
+               );
+            } case "patchDescription" -> {
+               MessageData messageData = buffer.get(chatId);
+               messageData.setPatchParameter("Description");
+               newMessage.setText(
+                     "Введите значение, на которое нужно заменить время \n" +
+                     "Формат: строка"
+               );
+               newMessage.setParseMode("HTML");
+               newMessage.setReplyMarkup(
+                     InlineKeyboardMarkup
+                           .builder()
+                           .keyboardRow(new InlineKeyboardRow(BotButton.CANSEL))
+                           .build()
+               );
+            } case "savePatch" -> {
+               MessageData messageData = buffer.remove(chatId);
+               StringDate date = messageData.getDate();
+               messageData = eventService.update(messageData.getId(), messageData);
+               messageData.setDate(date.toString());
+               messageDataService.saveAllWithChange(chatId, List.of(messageData));
+               newMessage.setText("Мероприятие изменено \n" + messageData);
+            } case "patchDelete" -> {
+               MessageData messageData = buffer.remove(chatId);
+               messageDataService.delete(chatId);
+               eventService.delete(messageData.getId());
+               newMessage.setText("Мероприятие удалено");
             } case "cansel" -> {
                buffer.remove(chatId);
                newMessage.setText("Действие отменено");
@@ -459,10 +551,206 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
    }
 
    //TODO rename
+   private void patch(Long chatId, String message, long date) {
+      MessageData messageData = buffer.get(chatId);
+      switch (messageData.getPatchParameter()) {
+         case "Index" -> {
+            getIndexAndSendParameterRequest(chatId, message);
+         } case "Parameter" -> {
+            //все действия через callback
+         } case "Action" -> {
+            //все действия через callback
+         } default -> {
+            getPatchDataAndActionRequest(chatId, message, date);
+         }
+      }
+   }
+
+   private void getIndexAndSendParameterRequest(Long chatId, String message) {
+      try {
+         int index = Integer.parseInt(message);
+         MessageData messageData = messageDataService.findByIndex(chatId, index);
+         if (messageData == null) {
+            throw new NumberFormatException();
+         }
+         messageData.setCommand("/patch");
+         messageData.setPatchParameter("Parameter");
+         buffer.remove(chatId);
+         buffer.put(chatId, messageData);
+         sendParameterRequest(chatId);
+      } catch (NumberFormatException ignored) {
+         sendIndexRequest(chatId);
+      }
+   }
+
+   private void getPatchDataAndActionRequest(Long chatId, String message, long date) {
+      Translator translator = new Translator(message);
+      MessageData messageData = buffer.get(chatId);
+      selectPatch(messageData, translator, chatId, date);
+   }
+
+   private void selectPatch(MessageData messageData, Translator translator, Long chatId, long date) {
+      switch (messageData.getPatchParameter()) {
+         case "Time" -> {
+            patchTimeAndSendActionRequest(messageData, translator, chatId);
+         } case "Title" -> {
+            patchTitleAndSendActionRequest(messageData, translator, chatId);
+         } case "Description" -> {
+            patchDescriptionAndSendActionRequest(messageData, translator, chatId);
+         }
+      }
+   }
+
+   private void patchTimeAndSendActionRequest(MessageData messageData, Translator translator, Long chatId) {
+      MessageData pathData = translator.stringToPatchObject(false);
+      if (oneDataInMessageData(pathData) && pathData.hasTimeInterval()) {
+         messageData.setTimeInterval(pathData.getTimeInterval());
+         messageData.setPatchParameter("Action");
+         sendActionRequest(chatId, messageData);
+      } else {
+         sendTimePatchRequest(chatId);
+      }
+   }
+
+   private void patchTitleAndSendActionRequest(MessageData messageData, Translator translator, Long chatId) {
+      MessageData pathData = translator.stringToPatchObject(false);
+      if (oneDataInMessageData(pathData) && !pathData.hasDefaultTitle()) {
+         messageData.setTitle(pathData.getTitle());
+         messageData.setPatchParameter("Action");
+         sendActionRequest(chatId, messageData);
+      } else {
+         sendTitlePatchRequest(chatId);
+      }
+   }
+
+   private void patchDescriptionAndSendActionRequest(MessageData messageData, Translator translator, Long chatId) {
+      MessageData pathData = translator.stringToPatchObject(true);
+      if (oneDataInMessageData(pathData) && pathData.hasDescription()) {
+         messageData.setDescription(pathData.getDescription());
+         messageData.setPatchParameter("Action");
+         sendActionRequest(chatId, messageData);
+      } else {
+         sendDescriptionPatchRequest(chatId);
+      }
+   }
+
+   private void sendIndexRequest(Long chatId) {
+      SendMessage response = buildResponse(chatId);
+      response.setText(
+            "Введите номер события, которое хотите изменить"
+      );
+      response.setParseMode("HTML");
+      response.setReplyMarkup(
+            InlineKeyboardMarkup
+                  .builder()
+                  .keyboardRow(new InlineKeyboardRow(BotButton.CANSEL))
+                  .build()
+      );
+      execute(response);
+   }
+
+   private void sendParameterRequest(Long chatId) {
+      SendMessage response = buildResponse(chatId);
+      response.setText(
+            "Выберите параметр, который хотите изменить \n" +
+                  "* в текущей версии дату изменить нельзя"
+      );
+      response.setParseMode("HTML");
+      response.setReplyMarkup(
+            InlineKeyboardMarkup
+                  .builder()
+                  .keyboardRow(
+                        new InlineKeyboardRow(
+                              BotButton.PATCH_TIME,
+                              BotButton.PATCH_TITLE,
+                              BotButton.PATCH_DESCRIPTION
+                        )
+                  ).keyboardRow(
+                        new InlineKeyboardRow(
+                              BotButton.PATCH_DELETE,
+                              BotButton.CANSEL
+                        )
+                  ).build()
+      );
+      execute(response);
+   }
+
+   private void sendTimePatchRequest(Long chatId) {
+      SendMessage response = buildResponse(chatId);
+      response.setText(
+            "Введите значение, на которое нужно заменить время \n" +
+            "Формат: hh:mm-hh:mm"
+      );
+      response.setParseMode("HTML");
+      response.setReplyMarkup(
+            InlineKeyboardMarkup
+                  .builder()
+                  .keyboardRow(new InlineKeyboardRow(BotButton.CANSEL))
+                  .build()
+      );
+      execute(response);
+   }
+
+   private void sendTitlePatchRequest(Long chatId) {
+      SendMessage response = buildResponse(chatId);
+      response.setText(
+            "Введите значение, на которое нужно заменить заголовок \n" +
+            "Формат: строка без запятых"
+      );
+      response.setParseMode("HTML");
+      response.setReplyMarkup(
+            InlineKeyboardMarkup
+                  .builder()
+                  .keyboardRow(new InlineKeyboardRow(BotButton.CANSEL))
+                  .build()
+      );
+      execute(response);
+   }
+
+   private void sendDescriptionPatchRequest(Long chatId) {
+      SendMessage response = buildResponse(chatId);
+      response.setText(
+            "Введите значение, на которое нужно заменить время \n" +
+            "Формат: строка"
+      );
+      response.setParseMode("HTML");
+      response.setReplyMarkup(
+            InlineKeyboardMarkup
+                  .builder()
+                  .keyboardRow(new InlineKeyboardRow(BotButton.CANSEL))
+                  .build()
+      );
+      execute(response);
+   }
+
+   private void sendActionRequest(Long chatId, MessageData messageData) {
+      SendMessage response = buildResponse(chatId);
+      messageData.setCommand(null);
+      response.setParseMode("HTML");
+      response.setText(
+            "Выберите действие с измененными данными \n" +
+                  messageData
+      );
+      response.setReplyMarkup(
+            InlineKeyboardMarkup
+                  .builder()
+                  .keyboardRow(
+                        new InlineKeyboardRow(
+                              BotButton.PATCH_SAVE,
+                              BotButton.PATCH,
+                              BotButton.CANSEL
+                        )
+                  ).build()
+      );
+      execute(response);
+   }
+
+   //TODO rename
    //TODO Clean Code
    private StringBuilder getStringData(MessageData messageData, Long chatId) {
       StringBuilder out = new StringBuilder();
       switch (messageData.getCommand()) {
+         //TODO сократить
          case "/today" -> {
             StringDate date = messageData.getDate();
 
@@ -546,70 +834,4 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
          throw new RuntimeException(e);
       }
    }
-/*
-    @Override
-    public void consume(Update update) {
-//        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-//        Date date = new Date();
-
-        System.out.println(update);
-
-        if (update.hasMessage() && update.getMessage().hasText()) {
-            System.out.println(update.getMessage().getDate());
-            Date date = new Date(((long)update.getMessage().getDate())*1000);
-            System.out.println(date);
-
-            Long chatId = update.getMessage().getChatId();
-            String message = update.getMessage().getText();
-
-            // обработка message в объект
-            // case проверка типа объекта
-            // если команда то команда
-            // если запрос то запрос
-
-
-            SendMessage response = SendMessage
-                    .builder()
-                    .chatId(chatId)
-                    .text("")
-                    .build();
-
-            if (message.equals("/test0")) {
-                InlineKeyboardButton a = InlineKeyboardButton.builder()
-                    .text("Next").callbackData("next")
-                    .build();
-
-                response.setParseMode("HTML");
-                response.setText("&&");
-                response.setReplyMarkup(InlineKeyboardMarkup.builder()
-                        .keyboardRow(new InlineKeyboardRow(a))
-                        .build()
-                );//update.hasCallbackQuery()
-            } else if (message.equals("/test")) {
-                response.setText("test");
-
-                response.setReplyMarkup(ReplyKeyboardMarkup
-                        .builder()
-                        .keyboardRow(new KeyboardRow("11", "22"))
-                        .keyboardRow(new KeyboardRow("21", "22", "23", "24", "25", "26", "27"))
-                        .keyboardRow(new KeyboardRow("31", "32", "33", "34", "35", "36", "37"))
-                        .keyboardRow(new KeyboardRow("41", "42", "43", "44", "45", "46", "47"))
-                        .build()
-                );
-            } else if (message.equals("/hide")) {
-                response.setText("Keyboard hidden");
-
-                response.setReplyMarkup(new ReplyKeyboardRemove(true));
-            } else {
-                response.setText(message);
-            }
-
-            try {
-                telegramClient.execute(response);
-            } catch (TelegramApiException e) {
-                throw new RuntimeException(e);
-            }
-        }
-    }
- */
 }

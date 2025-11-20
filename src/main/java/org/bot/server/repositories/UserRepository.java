@@ -29,6 +29,7 @@ public class UserRepository {
    }
 
    public void delete(Long chatId) {
-      restClient.delete().uri("/{chatId}", chatId);
+      restClient.delete().uri("/{chatId}", chatId)
+            .retrieve().body(String.class);;
    }
 }
