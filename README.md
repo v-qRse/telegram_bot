@@ -1,6 +1,6 @@
-src/main/resources/config.yaml
+[config.yaml](src/main/resources/config.yaml)
 ```yaml
-token: "telegram-bot-token"
+token: "you-telegram-bot-token"
 ```
 
 Start Redis DB: 
