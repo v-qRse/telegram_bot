@@ -99,21 +99,22 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                } case "/help" -> {
                   responseText.append(
                         "Команды: \n " +
-                        "/start     - стартовая команда \n" +
-                        "/help      - текущая команда \n" +
-                        "/today     - события на сегодня \n" +
-                        "/tomorrow  - события на завтра \n" +
-                        "/alldata   - все ваши события \n" +
-                        "Создание данных: \n" +
-                        "/event     - пошаговое создание" +
-                        "чч:мм - чч:мм, дд.MM.гггг, заголовок, описание - одним сообщение по шаблону\n" +
-                        "Введите без времени, если подразумевается, что оно на весь день \n\n" +
-                        "После их введения есть выбор сохранения или удаления введенных данных, " +
+                        "/start - стартовая команда \n" +
+                        "/help - текущая команда \n" +
+                        "/today - события на сегодня \n" +
+                        "/tomorrow - события на завтра \n" +
+                        "/date - запросить события для определенного дня \n" +
+                        "/alldata - все недавно запрошенные \n" +
+                        "/patch - изменение или удаление недавно запрошенных событий \n" +
+                        "Создание события: \n" +
+                        "1) /event (пошаговое создание) \n" +
+                        "2) чч:мм - чч:мм, дд.MM.гггг, заголовок, описание (одним сообщение по шаблону) \n" +
+                        "В последнем введите без времени, если подразумевается, что оно на весь день \n\n" +
+                        "После их введения есть выбор сохранения или удаления введенного события, " +
                         "заголовок (строка без !запятой!) и описание не обязательны \n\n" +
-                        "* текущая версия удаляет все данные при перезапуске бота \n" +
-                        "* в большинстве случает при неверном введении данных просто ничего не произойдет, " +
-                        "так как нету обработки ошибок \n" +
-                        "* есть шанс, что бот упадет, простая проверка работоспособности - введение команд"
+                        "* если ответа на запрос нет, то: \n" +
+                        "1) введенные данные некорректны \n" +
+                        "2) бот не работает (проверка - введение любой команды, если ответа нет, то бот не работает)"
                   );
                } case "/today", "/tomorrow", "/alldata" -> {
                   responseText.append(getStringData(messageData, chatId));
@@ -238,6 +239,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                messageData.setDescription(null);
                messageData.setPatchParameter(null);
                sendSaveOrDeleteRequest(chatId, messageData);
+               sendDescriptionRequest(chatId);
                newMessage.setText("Для заголовка установлено значение по умолчанию");
             } case "nodescription" -> {
                MessageData messageData = buffer.get(chatId);
@@ -336,7 +338,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
          editExecute(newMessage);
       }
 
-      System.err.println(update + "\n" + buffer.toString());
+//      System.err.println(update + "\n" + buffer.toString());
    }
 
    private void fillEventMessage(Long chatId, String message, long date) {
