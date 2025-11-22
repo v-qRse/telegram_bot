@@ -756,7 +756,6 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
          //TODO сократить
          case "/today" -> {
             StringDate date = messageData.getDate();
-
             List<MessageData> messageDataList = eventDateService.findByDate(chatId, date);
             messageDataList = messageDataService.saveAllWithChange(chatId, messageDataList);
             List<String> buf = messageDataList

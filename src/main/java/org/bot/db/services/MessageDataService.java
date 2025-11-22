@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class MessageDataService {
@@ -18,33 +19,27 @@ public class MessageDataService {
    }
 
    public List<MessageData> saveAllWithChange(Long key, List<MessageData> value) {
-//      if (containsKey(key)) {
-//         delete(key);
-//      }
       MessageDataEntity messageData = messageDataRepository.save(new MessageDataEntity(key.toString(), value));
       return messageData.getMessageDataList();
    }
 
    public List<MessageData> findAll(Long key) {
-      if (!containsKey(key)) {
-         return List.of();
+      Optional<MessageDataEntity> optional = messageDataRepository.findById(key.toString());
+      if (optional.isPresent() && optional.get().getMessageDataList() != null && !optional.get().getMessageDataList().isEmpty()) {
+          return optional.get().getMessageDataList();
       }
-      MessageDataEntity messageData = messageDataRepository.findById(key.toString()).get();
-      return messageData.getMessageDataList();
+      return List.of();
    }
 
    public MessageData findByIndex(Long key, long index) {
-      if (!containsKey(key)) {
-         return null;
-      }
-      return findAll(key)
-            .stream()
-            .filter(messageData -> messageData.getNumber() == index)
-            .toList()
-            .get(0);
+      List<MessageData> messageDataList = findAll(key)
+               .stream()
+               .filter(messageData -> messageData.getNumber() == index)
+               .toList();
+      return messageDataList.isEmpty() ? null: messageDataList.get(0);
    }
 
-   public  void delete(Long key) {
+   public void delete(Long key) {
       messageDataRepository.deleteById(key.toString());
    }
 }
