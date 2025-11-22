@@ -126,7 +126,9 @@ public class MessageData implements Comparable<MessageData> {
          return command;
       }
       StringBuilder stringBuilder = new StringBuilder();
-      stringBuilder.append(number).append(") ");
+      if (number != null) {
+         stringBuilder.append(number).append(") ");
+      }
       if (hasDate()) {
          stringBuilder.append(date).append("\n");
       }
