@@ -1,7 +1,7 @@
 package org.bot.db.services;
 
 import org.bot.db.data.MessageDataEntity;
-import org.bot.db.repositories.MessageDateRepository;
+import org.bot.db.repositories.MessageDataRepository;
 import org.bot.map.data.MessageData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -11,17 +11,17 @@ import java.util.List;
 @Service
 public class MessageDataService {
    @Autowired
-   private MessageDateRepository messageDateRepository;
+   private MessageDataRepository messageDataRepository;
 
    public boolean containsKey(Long key) {
-      return messageDateRepository.existsById(key.toString());
+      return messageDataRepository.existsById(key.toString());
    }
 
    public List<MessageData> saveAllWithChange(Long key, List<MessageData> value) {
-      if (containsKey(key)) {
-         delete(key);
-      }
-      MessageDataEntity messageData = messageDateRepository.save(new MessageDataEntity(key.toString(), value));
+//      if (containsKey(key)) {
+//         delete(key);
+//      }
+      MessageDataEntity messageData = messageDataRepository.save(new MessageDataEntity(key.toString(), value));
       return messageData.getMessageDataList();
    }
 
@@ -29,7 +29,7 @@ public class MessageDataService {
       if (!containsKey(key)) {
          return List.of();
       }
-      MessageDataEntity messageData = messageDateRepository.findById(key.toString()).get();
+      MessageDataEntity messageData = messageDataRepository.findById(key.toString()).get();
       return messageData.getMessageDataList();
    }
 
@@ -45,6 +45,6 @@ public class MessageDataService {
    }
 
    public  void delete(Long key) {
-      messageDateRepository.deleteById(key.toString());
+      messageDataRepository.deleteById(key.toString());
    }
 }

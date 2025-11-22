@@ -2,6 +2,7 @@ package org.bot;
 
 import org.bot.configure.Config;
 import org.bot.configure.ConfigHandler;
+import org.bot.db.services.BufferService;
 import org.bot.db.services.MessageDataService;
 import org.bot.map.Translator;
 import org.bot.map.data.MessageData;
@@ -26,7 +27,6 @@ import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateConsumer {
@@ -40,16 +40,14 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
    @Autowired
    private EventService eventService;
 
-   //TODO пока так, в будующем мб заменить на какую-нибудь бд для сохранения запросов с основной бд
-   private final ConcurrentHashMap<Long, MessageData> buffer;
+   @Autowired
+   private BufferService bufferService;
    @Autowired
    private MessageDataService messageDataService;
 
    public Bot() {
       config = ConfigHandler.getInstance().getConfig();
       telegramClient = new OkHttpTelegramClient(config.getToken());
-
-      buffer = new ConcurrentHashMap<>();
    }
 
    @Override
@@ -70,14 +68,13 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
          Long chatId = update.getMessage().getChatId();
          String message = update.getMessage().getText();
 
-         if (buffer.containsKey(chatId)) {
-            switch (buffer.get(chatId).getCommand()) {
+         if (bufferService.containsKey(chatId)) {
+            switch (bufferService.find(chatId).getCommand()) {
                case "/event" -> {
                   fillEventMessage(chatId, message, update.getMessage().getDate());
                } case "/date" -> {
                   request(chatId, message, update.getMessage().getDate());
                } case "/patch" -> {
-                  //TODO сделать
                   patch(chatId, message, update.getMessage().getDate());
                }
             }
@@ -121,12 +118,12 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                } case "/event" -> {
                   messageData.setDate(null);
                   messageData.setPatchParameter("TimeInterval");
-                  buffer.put(chatId, messageData);
+                  bufferService.saveWithChange(chatId, messageData);
 
                   //TODO заменить на sendTimeIntervalRequest(Long chatId)
                   responseText.append(
                         "Введите временной промежуток. \n" +
-                              "Формат: hh:mm - hh:mm"
+                        "Формат: hh:mm - hh:mm"
                   );
 
                   response.setParseMode("HTML");
@@ -139,7 +136,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                } case "/date" -> {
                   messageData.setDate(null);
                   messageData.setPatchParameter("Index");
-                  buffer.put(chatId, messageData);
+                  bufferService.saveWithChange(chatId, messageData);
                   responseText.append(
                         "Введите требуемую дату в формате \n" +
                         "dd.MM.yyyy \n" +
@@ -156,7 +153,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                } case "/patch" -> {
                   messageData.setDate(null);
                   messageData.setPatchParameter("Index");
-                  buffer.put(chatId, messageData);
+                  bufferService.saveWithChange(chatId, messageData);
                   responseText.append(
                         "Введите номер события, которое хотите изменить"
                   );
@@ -172,7 +169,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                }
             }
          } else if (messageData.hasDate()) {
-            buffer.put(chatId, messageData);
+            bufferService.saveWithChange(chatId, messageData);
 
             //TODO заменить на sendSaveOrDeleteRequest(Long chatId, MessageData messageData)
             responseText.append("Выберите действие, которое хотите сделать с введенным событием")
@@ -205,53 +202,56 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
 
          switch (data) {
             case "save" -> {
-               MessageData messageData = buffer.remove(chatId);
+               MessageData messageData = bufferService.remove(chatId);
                messageData = eventDateService.save(chatId, messageData);
                messageDataService.saveAllWithChange(chatId, List.of(messageData));
                newMessage.setText("Сохранен");
             } case "delete" -> {
-               buffer.remove(chatId);
+               bufferService.remove(chatId);
                newMessage.setText("Удален");
             } case "allday" -> {
-               MessageData messageData = buffer.get(chatId);
+               MessageData messageData = bufferService.find(chatId);
                messageData.setPatchParameter("Date");
+               bufferService.saveWithChange(chatId, messageData);
                sendDateRequest(chatId);
                newMessage.setText("Событие весь день");
             } case "today" -> {
                MessageData dateMessageData = new MessageData();
                dateMessageData.getDate().setDate(update.getCallbackQuery().getMessage().getDate());
-               MessageData messageData = buffer.get(chatId);
+               MessageData messageData = bufferService.find(chatId);
                messageData.setPatchParameter("Title");
                messageData.setDate(dateMessageData.getDate().getDate());
+               messageData = bufferService.saveWithChange(chatId, messageData);
                sendTitleRequest(chatId);
                newMessage.setText("Установлена дата " + messageData.getDate());
             } case "tomorrow" -> {
                MessageData dateMessageData = new MessageData();
                dateMessageData.getDate().setDate(update.getCallbackQuery().getMessage().getDate());
-               MessageData messageData = buffer.get(chatId);
+               MessageData messageData = bufferService.find(chatId);
                messageData.setPatchParameter("Title");
                messageData.setDate(nextDay(dateMessageData.getDate().getDate()));
+               messageData = bufferService.saveWithChange(chatId, messageData);
                sendTitleRequest(chatId);
                newMessage.setText("Установлена дата " + messageData.getDate());
             } case "notitle" -> {
-               MessageData messageData = buffer.get(chatId);
-               messageData.setCommand(null);
-               messageData.setDescription(null);
-               messageData.setPatchParameter(null);
-               sendSaveOrDeleteRequest(chatId, messageData);
+               MessageData messageData = bufferService.find(chatId);
+               messageData.setPatchParameter("Description");
+               bufferService.saveWithChange(chatId, messageData);
                sendDescriptionRequest(chatId);
                newMessage.setText("Для заголовка установлено значение по умолчанию");
             } case "nodescription" -> {
-               MessageData messageData = buffer.get(chatId);
+               MessageData messageData = bufferService.find(chatId);
                messageData.setCommand(null);
                messageData.setDescription(null);
                messageData.setPatchParameter(null);
+               messageData = bufferService.saveWithChange(chatId, messageData);
                sendSaveOrDeleteRequest(chatId, messageData);
                newMessage.setText("Для описания значение не установлено");
             //TODO упростить, заменить на соответствующие методы
             } case "patch" -> {
-               MessageData messageData = buffer.get(chatId);
+               MessageData messageData = bufferService.find(chatId);
                messageData.setPatchParameter("Parameter");
+               bufferService.saveWithChange(chatId, messageData);
                newMessage.setText(
                      "Выберите параметр, который хотите изменить \n" +
                      "* в текущей версии дату изменить нельзя"
@@ -274,8 +274,9 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                            ).build()
                );
             } case "patchTime" -> {
-               MessageData messageData = buffer.get(chatId);
+               MessageData messageData = bufferService.find(chatId);
                messageData.setPatchParameter("Time");
+               bufferService.saveWithChange(chatId, messageData);
                newMessage.setText(
                      "Введите значение, на которое нужно заменить время \n" +
                      "Формат: hh:mm-hh:mm"
@@ -288,8 +289,9 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                            .build()
                );
             } case "patchTitle" -> {
-               MessageData messageData = buffer.get(chatId);
+               MessageData messageData = bufferService.find(chatId);
                messageData.setPatchParameter("Title");
+               bufferService.saveWithChange(chatId, messageData);
                newMessage.setText(
                      "Введите значение, на которое нужно заменить заголовок \n" +
                      "Формат: строка без запятых"
@@ -302,8 +304,9 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                            .build()
                );
             } case "patchDescription" -> {
-               MessageData messageData = buffer.get(chatId);
+               MessageData messageData = bufferService.find(chatId);
                messageData.setPatchParameter("Description");
+               bufferService.saveWithChange(chatId, messageData);
                newMessage.setText(
                      "Введите значение, на которое нужно заменить время \n" +
                      "Формат: строка"
@@ -316,19 +319,19 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
                            .build()
                );
             } case "savePatch" -> {
-               MessageData messageData = buffer.remove(chatId);
+               MessageData messageData = bufferService.remove(chatId);
                StringDate date = messageData.getDate();
                messageData = eventService.update(messageData.getId(), messageData);
                messageData.setDate(date.toString());
                messageDataService.saveAllWithChange(chatId, List.of(messageData));
                newMessage.setText("Мероприятие изменено \n" + messageData);
             } case "patchDelete" -> {
-               MessageData messageData = buffer.remove(chatId);
+               MessageData messageData = bufferService.remove(chatId);
                messageDataService.delete(chatId);
                eventService.delete(messageData.getId());
                newMessage.setText("Мероприятие удалено");
             } case "cansel" -> {
-               buffer.remove(chatId);
+               bufferService.remove(chatId);
                newMessage.setText("Действие отменено");
             } default -> {
                throw new Error("неверный callback запрос");
@@ -337,14 +340,13 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
 
          editExecute(newMessage);
       }
-
-//      System.err.println(update + "\n" + buffer.toString());
    }
 
    private void fillEventMessage(Long chatId, String message, long date) {
       Translator translator = new Translator(message);
-      MessageData messageData = buffer.get(chatId);
+      MessageData messageData = bufferService.find(chatId);
       fillFromTranslatorAndSendNextRequest(messageData, translator, chatId, date);
+      bufferService.saveWithChange(chatId, messageData);
    }
 
    private void fillFromTranslatorAndSendNextRequest(MessageData messageData, Translator translator, Long chatId, long date) {
@@ -515,7 +517,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
          sendDatesRequest(chatId);
       } else {
          messageDataList = messageDataService.saveAllWithChange(chatId, messageDataList);
-         buffer.remove(chatId);
+         bufferService.remove(chatId);
          List<String> buf = messageDataList
                .stream()
                .map(msg -> msg.toString() + "\n")
@@ -554,7 +556,7 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
 
    //TODO rename
    private void patch(Long chatId, String message, long date) {
-      MessageData messageData = buffer.get(chatId);
+      MessageData messageData = bufferService.find(chatId);
       switch (messageData.getPatchParameter()) {
          case "Index" -> {
             getIndexAndSendParameterRequest(chatId, message);
@@ -563,7 +565,8 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
          } case "Action" -> {
             //все действия через callback
          } default -> {
-            getPatchDataAndActionRequest(chatId, message, date);
+            getPatchDataAndActionRequest(chatId, message, messageData, date);
+            bufferService.saveWithChange(chatId, messageData);
          }
       }
    }
@@ -577,17 +580,15 @@ public class Bot implements SpringLongPollingBot, LongPollingSingleThreadUpdateC
          }
          messageData.setCommand("/patch");
          messageData.setPatchParameter("Parameter");
-         buffer.remove(chatId);
-         buffer.put(chatId, messageData);
+         bufferService.saveWithChange(chatId, messageData);
          sendParameterRequest(chatId);
       } catch (NumberFormatException ignored) {
          sendIndexRequest(chatId);
       }
    }
 
-   private void getPatchDataAndActionRequest(Long chatId, String message, long date) {
+   private void getPatchDataAndActionRequest(Long chatId, String message, MessageData messageData, long date) {
       Translator translator = new Translator(message);
-      MessageData messageData = buffer.get(chatId);
       selectPatch(messageData, translator, chatId, date);
    }
 
